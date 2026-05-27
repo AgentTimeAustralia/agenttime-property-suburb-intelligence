@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Authentication Successful</title>
+
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+
+        display: flex;
+
+        justify-content: center;
+
+        align-items: center;
+
+        height: 100vh;
+
+        background: #f7f7f7;
+
+        text-align: center;
+
+        color: #333;
+      }
+
+      .box {
+        background: white;
+
+        padding: 30px;
+
+        border-radius: 12px;
+
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+
+      h2 {
+        color: #16a34a;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="box">
+      <h2>Authentication Successful</h2>
+
+      <p>You may now close this window and return to Suburb Shortlist.</p>
+    </div>
+
+    <script>
+      /* =====================================================
+    SEND AUTH SUCCESS MESSAGE
+    ===================================================== */
+
+      if (window.opener) {
+        window.opener.postMessage("AUTH_SUCCESS", "*");
+      }
+
+      /* =====================================================
+AUTO CLOSE WINDOW
+===================================================== */
+
+      setTimeout(() => {
+        window.close();
+      }, 1000);
+    </script>
+  </body>
+</html>

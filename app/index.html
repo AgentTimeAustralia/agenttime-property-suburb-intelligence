@@ -1,461 +1,833 @@
-    <!DOCTYPE html>
-    <html>
-    <head>
-    <meta charset="UTF-8">
-    <title>Property Search</title>
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>AI Suburb Match Engine</title>
+    <!-- Zoho Embedded App SDK (Used to interact with Zoho CRM context) -->
+    <script src="https://live.zwidgets.com/js-sdk/1.0.5/ZohoEmbededAppSDK.min.js"></script>
 
-    <script src="https://static.zohocdn.com/zohocrm/v2/sdk/ZohoEmbededAppSDK.min.js"></script>
-
-    <!-- Zoho CRM Font -->
-    <link href="//static.zohocdn.com/zohofonts/zohopuvi/4.0/Zoho_Puvi_Regular.woff2" rel="preload" as="font" type="font/woff2" crossorigin>
-    <link href="//static.zohocdn.com/zohofonts/zohopuvi/4.0/Zoho_Puvi_Medium.woff2" rel="preload" as="font" type="font/woff2" crossorigin>
-    <link href="//static.zohocdn.com/zohofonts/zohopuvi/4.0/Zoho_Puvi_SemiBold.woff2" rel="preload" as="font" type="font/woff2" crossorigin>
-    <link href="//static.zohocdn.com/zohofonts/zohopuvi/4.0/Zoho_Puvi_Bold.woff2" rel="preload" as="font" type="font/woff2" crossorigin>
+    <!-- Google Font: Poppins -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
 
     <style>
+      /* =====================================================
+GLOBAL STYLES
+===================================================== */
 
-    @font-face {
-    font-family: "Zoho Puvi";
-    src: url("//static.zohocdn.com/zohofonts/zohopuvi/4.0/Zoho_Puvi_Regular.woff2") format("woff2");
-    font-weight: 400;
-    }
+      /* Apply Poppins font everywhere and use proper box model */
+      * {
+        font-family: "Poppins", sans-serif;
+        box-sizing: border-box;
+      }
 
-    @font-face {
-    font-family: "Zoho Puvi";
-    src: url("//static.zohocdn.com/zohofonts/zohopuvi/4.0/Zoho_Puvi_Medium.woff2") format("woff2");
-    font-weight: 500;
-    }
+      /* Page base styling */
+      body {
+        background: #f7f8fa;
+        margin: 0;
+        padding: 20px;
+        font-size: 14px;
+        color: #2c2c2c;
+      }
 
-    @font-face {
-    font-family: "Zoho Puvi";
-    src: url("//static.zohocdn.com/zohofonts/zohopuvi/4.0/Zoho_Puvi_SemiBold.woff2") format("woff2");
-    font-weight: 600;
-    }
+      /* =====================================================
+SEARCH BAR
+===================================================== */
 
-    @font-face {
-    font-family: "Zoho Puvi";
-    src: url("//static.zohocdn.com/zohofonts/zohopuvi/4.0/Zoho_Puvi_Bold.woff2") format("woff2");
-    font-weight: 700;
-    }
+      /* Address search input */
+      input {
+        flex: 1;
+        padding: 12px;
+        border: 1px solid #e3e3e3;
+        border-radius: 10px;
+        font-size: 15px;
+        font-family: "Poppins";
+      }
 
-    body{
-    font-family:"Zoho Puvi", Arial, sans-serif;
-    background:#f7f7f7;
-    margin:0;
-    padding:20px;
-    font-size:14px;
-    color:#313949;
-    }
+      select {
+        flex: 1;
+        padding: 12px;
+        border: 1px solid #e3e3e3;
+        border-radius: 10px;
+        font-size: 15px;
+        font-family: "Poppins";
+        background: white;
+        min-width: 140px;
+        outline: none;
+        transition: all 0.2s ease;
+      }
 
-    .container{
-    max-width:700px;
-    margin:auto;
-    background:white;
-    padding:20px;
-    border-radius:6px;
-    box-shadow:0 1px 3px rgba(0,0,0,0.08);
-    }
+      input:focus,
+      select:focus {
+        border-color: #e53935;
+        box-shadow: 0 0 0 3px rgba(229, 57, 53, 0.08);
+      }
 
-    h2{
-    margin-top:0;
-    font-size:18px;
-    font-weight:600;
-    }
+      /* =====================================================
+BUTTON STYLES
+===================================================== */
 
-    input{
-    width:100%;
-    padding:10px;
-    border:1px solid #ddd;
-    border-radius:4px;
-    font-size:14px;
-    }
+      button {
+        padding: 10px 16px;
+        border: none;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 150px;
+      }
 
-    .dropdown{
-    border:1px solid #ddd;
-    background:white;
-    max-height:180px;
-    overflow-y:auto;
-    margin-top:4px;
-    border-radius:4px;
-    }
+      /* Black button used for "View Listings" */
+      .view-btn {
+        background: #1f1f1f;
+        color: white;
+      }
 
-    .dropdown div{
-    padding:8px;
-    cursor:pointer;
-    }
+      /* Primary action button (Search / Generate Report) */
+      .action-btn {
+        background: #e53935;
+        color: white;
+      }
 
-    .dropdown div:hover{
-    background:#f2f2f2;
-    }
+      /* Green button for shortlisting properties */
+      .shortlist-btn {
+        background: #2e7d32;
+        color: white;
+        padding: 12px 18px;
+        font-size: 14px;
+        font-weight: 600;
+        border-radius: 10px;
+        width: 100%;
+        margin-top: 14px;
+        transition: all 0.2s ease;
+      }
 
-    .filters{
-    display:flex;
-    gap:8px;
-    margin-top:12px;
-    }
+      .shortlist-btn:hover {
+        background: #256628;
+        transform: translateY(-1px);
+      }
 
-    select{
-    padding:8px;
-    border:1px solid #ddd;
-    border-radius:4px;
-    font-size:13px;
-    }
+      /* =====================================================
+RESULT CARDS
+===================================================== */
 
-    button{
-    padding:9px 14px;
-    border:none;
-    background:#d32f2f;
-    color:white;
-    border-radius:4px;
-    cursor:pointer;
-    }
+      /* Container for search results */
+      .results {
+        margin-top: 20px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 18px;
+        align-items: flex-start;
+      }
 
-    button:hover{
-    background:#b71c1c;
-    }
+      /* Individual property card */
+      .property {
+        border: 1px solid #e7e7e7;
+        border-radius: 14px;
+        padding: 20px;
+        background: white;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+        transition: all 0.2s ease;
+        width: calc(50% - 9px);
+        min-width: 320px;
+        max-width: 420px;
+      }
 
-    .results{
-    margin-top:20px;
-    }
+      .property:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+      }
 
-    .property{
-    border:1px solid #eee;
-    border-radius:6px;
-    padding:14px;
-    margin-bottom:12px;
-    background:white;
-    }
+      /* =====================================================
+TOAST MESSAGE (SHORTLIST CONFIRMATION)
+===================================================== */
 
-    .property h3{
-    margin:0 0 6px 0;
-    font-size:15px;
-    font-weight:600;
-    }
+      .toast {
+        position: fixed;
+        top: 30px;
+        left: 50%;
+        transform: translate(-50%, -15px);
+        background: #2e7d32;
+        color: white;
+        padding: 14px 18px;
+        border-radius: 8px;
+        font-size: 14px;
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+        opacity: 0;
+        transition: all 0.35s ease;
+        z-index: 9999;
+      }
 
-    .property p{
-    margin:3px 0;
-    font-size:13px;
-    }
+      /* Visible state */
+      .toast.show {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
 
-    .view-btn{
-    background:#333;
-    }
+      /* =====================================================
+FILTER MODAL BUTTONS
+===================================================== */
 
-    .view-btn:hover{
-    background:#111;
-    }
+      /* Clear filters button */
+      .modal-box button:first-child {
+        background: #f1f1f1;
+        color: #333;
+      }
 
+      .modal-box button:first-child:hover {
+        background: #e4e4e4;
+      }
 
-    .report-options{
-display:flex;
-flex-direction:column;
-gap:10px;
-margin-top:12px;
-padding-top:10px;
-border-top:1px solid #eee;
-}
+      /* Apply filters button */
+      .modal-box button:last-child {
+        background: #e53935;
+        color: white;
+      }
 
-.report-option{
-display:flex;
-align-items:center;
-gap:8px;
-font-size:14px;
-}
+      .modal-box button:last-child:hover {
+        background: #c62828;
+      }
 
-.report-option input{
-width:16px;
-height:16px;
-cursor:pointer;
-}
+      /* Modal close button */
+      .modal-close,
+      .modal-header button {
+        background: #f3f3f3;
+        border-radius: 8px;
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
 
-.report-actions{
-margin-top:14px;
-display:flex;
-gap:10px;
-}
+      .modal-close:hover,
+      .modal-header button:hover {
+        background: #e53935;
+        color: white;
+      }
 
-.action-btn{
-padding:10px 12px;
-font-size:13px;
-border-radius:4px;
-height:36px;
-display:inline-flex;
-align-items:center;
-justify-content:center;
-}
+      /* Disabled state for Generate Report button */
+      .action-btn:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
 
+      .search-box button {
+        white-space: nowrap;
+      }
+
+      .watermark {
+        position: fixed;
+        bottom: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+
+        font-size: 10px;
+        color: #aaa;
+        opacity: 0.5;
+
+        letter-spacing: 0.6px;
+        font-weight: 400;
+
+        pointer-events: none;
+        user-select: none;
+      }
+
+      .watermark span {
+        font-weight: 500;
+        color: #666;
+      }
+
+      .summary-bar {
+        margin-bottom: 18px;
+
+        background: white;
+
+        border-radius: 12px;
+
+        padding: 14px 18px;
+
+        border: 1px solid #ececec;
+
+        font-size: 14px;
+
+        font-weight: 500;
+
+        color: #444;
+
+        display: none;
+      }
     </style>
-    </head>
+  </head>
 
-    <body>
+  <body>
+    <div
+      style="
+        background: white;
+        padding: 24px;
+        border-radius: 18px;
+        border: 1px solid #ececec;
+        margin-bottom: 24px;
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr 1fr auto;
+        gap: 14px;
+        align-items: end;
+        max-width: 1000px;
+        margin: auto;
+      "
+    >
+      <div>
+        <label>State</label><br />
+        <select id="stateFilter">
+          <option value="">Select State</option>
 
-    <div class="container">
+          <option value="NSW">NSW</option>
+          <option value="VIC">VIC</option>
+          <option value="QLD">QLD</option>
+          <option value="WA">WA</option>
+          <option value="SA">SA</option>
+          <option value="TAS">TAS</option>
+          <option value="NT">NT</option>
+          <option value="ACT">ACT</option>
+        </select>
+      </div>
 
-    <h2></h2>
+      <div>
+        <label>Budget</label><br />
+        <input type="number" id="budgetFilter" placeholder="Maximum Budget" />
+      </div>
 
-    <input id="addressInput" placeholder="Search suburb or address in Australia">
+      <div>
+        <label>Property Type</label><br />
+        <select id="propertyTypeFilter">
+          <option value="">Select</option>
 
-    <div id="suggestions" class="dropdown"></div>
+          <option value="Free Standing">Free Standing</option>
 
-    <div class="filters">
+          <option value="Unit">Unit</option>
 
-    <select id="propertyType">
-    <option value="">Property Type</option>
-    <option value="House">House</option>
-    <option value="Apartment">Apartment</option>
-    <option value="Townhouse">Townhouse</option>
-    </select>
+          <option value="Townhouse/Villa">Townhouse/Villa</option>
 
-    <select id="bedrooms">
-    <option value="">Beds</option>
-    <option value="1">1</option>
-    <option value="2">2</option>
-    <option value="3">3</option>
-    <option value="4">4</option>
-    </select>
+          <option value="Land">Land</option>
 
-    <button onclick="searchProperty()">Search</button>
+          <option value="Home">House</option>
+        </select>
+      </div>
 
+      <div>
+        <label>Yield %</label><br />
+        <input type="number" id="yieldFilter" placeholder="Minimum Yield" />
+      </div>
+
+      <button class="action-btn" onclick="searchSuburbs()">Search</button>
     </div>
+    <div id="summaryBar" class="summary-bar"></div>
 
-    <div id="selectedPropertyPanel"
-    style="display:none;margin-top:15px;border:1px solid #eee;padding:14px;border-radius:6px;background:#fafafa;">
-    
-    <b>Selected Property</b>
-    
-    <p id="selectedPropertyName"></p>
-    
-    <div class="report-options">
-    
-    <label class="report-option">
-    <input type="checkbox" id="climateCheck">
-    <span>Climate Analysis Report</span>
-    </label>
-    
-    <label class="report-option">
-    <input type="checkbox" id="cmaCheck">
-    <span>CMA</span>
-    </label>
-    
-    </div>
-    
-    <div class="report-actions">
-    
-        <button class="action-btn" onclick="generateReport()">Generate Report</button>
-    
-    <button class="view-btn" onclick="cancelReport()">Cancel</button>
-    
-    </div>
-    
-    </div>
-
+    <!-- Search results container -->
     <div id="results" class="results"></div>
 
+    <!-- Toast notification -->
+    <div id="toast" class="toast"></div>
+
     <script>
+      /* =====================================================
+GLOBAL VARIABLES
+===================================================== */
+      let clientId = "";
+      /* getteng org id starting here */
+      let currentUser = {};
 
-let selectedAddress="";
-const apiKey="a032bfd79fee4cf580e5b2439209c809";
+      let currentOrg = {};
 
-let lastResultsHTML=""; // store results so cancel can restore
+      async function shortlistSuburb(suburb) {
+        try {
+          const recordID = window.recordID;
 
-const input=document.getElementById("addressInput");
-const dropdown=document.getElementById("suggestions");
+          /* =====================================================
+SEARCH EXISTING SUBURB
+===================================================== */
+          const existingSuburb = await ZOHO.CRM.API.searchRecord({
+            Entity: "Suburbs",
+            Type: "criteria",
+            Query: `(Name:equals:${suburb.suburb})and(State:equals:${suburb.state})`,
+          });
 
-input.addEventListener("input",async function(){
+          /* =====================================================
+DUPLICATE CHECK
+===================================================== */
 
-const query=input.value;
+          if (existingSuburb.data && existingSuburb.data.length > 0) {
+            showToast("Suburb already shortlisted", "error");
 
-if(query.length<3){
-dropdown.innerHTML="";
-return;
-}
+            return;
+          }
+          /* =====================================================
+CREATE SUBURB IF NOT EXISTS
+===================================================== */
 
-const url=`https://api.geoapify.com/v1/geocode/autocomplete?text=${encodeURIComponent(query)}&filter=countrycode:au&limit=5&apiKey=${apiKey}`;
+          if (!suburbRecordId) {
+            const createResponse = await ZOHO.CRM.API.insertRecord({
+              Entity: "Suburbs",
+              APIData: {
+                Name: suburb.suburb,
+                State: suburb.state,
+                Locality_ID: suburb.localityId,
+                Match_Score: parseInt(suburb.matchScore),
+                Median_Price: parseFloat(suburb.medianPrice),
+                Gross_Yield: parseFloat(suburb.rentalYield),
+                Property_Type: window.propertyCategory,
+                Acquisition_Name: recordID,
+              },
+            });
 
-try{
+            suburbRecordId = createResponse.data[0].details.id;
+          }
 
-const response=await fetch(url);
-const data=await response.json();
+          /* =====================================================
+SUCCESS
+===================================================== */
 
-dropdown.innerHTML="";
+          showToast("Suburb shortlisted successfully");
+        } catch (error) {
+          console.error(JSON.stringify(error, null, 2));
 
-data.features.forEach(feature=>{
+          showToast("Failed to shortlist suburb", "error");
+        }
+      }
 
-const item=document.createElement("div");
-item.innerText=feature.properties.formatted;
+      async function generateSuburbMatches(
+        preferredState,
+        maxBudget,
+        minYield,
+        propertyCategory
+      ) {
+        try {
+          document.getElementById("results").innerHTML = `
 
-item.onclick=function(){
+<div
+style="
+width:100%;
+display:flex;
+justify-content:center;
+align-items:center;
+padding:80px 20px;
+"
+>
 
-selectedAddress=feature.properties.formatted;
-input.value=selectedAddress;
-dropdown.innerHTML="";
-
-};
-
-dropdown.appendChild(item);
-
-});
-
-}catch(e){
-console.error(e);
-}
-
-});
-
-
-function searchProperty(){
-
-fetch("https://dummyjson.com/products?limit=20")
-.then(res=>res.json())
-.then(data=>renderResults(data.products));
-
-}
-
-
-function renderResults(properties){
-
-let type=document.getElementById("propertyType").value;
-let beds=document.getElementById("bedrooms").value;
-
-let html="";
-
-properties.forEach(p=>{
-
-let propertyType=["House","Apartment","Townhouse"][Math.floor(Math.random()*3)];
-let bedrooms=Math.floor(Math.random()*4)+1;
-
-if(type && type!==propertyType) return;
-if(beds && bedrooms!=beds) return;
-
-html+=`
-<div class="property">
-
-<h3>${p.title}</h3>
-
-<p><b>Address:</b> ${selectedAddress || "Sydney NSW, Australia"}</p>
-
-<p><b>Type:</b> ${propertyType}</p>
-
-<p><b>Bedrooms:</b> ${bedrooms}</p>
-
-<p><b>Price:</b> $${p.price}</p>
-
-<div class="actions">
-
-<div style="margin-top:8px; display:flex; gap:8px;">
-
-<button class="view-btn"
-onclick="viewListings('${selectedAddress}')">
-View Listings
-</button>
-
-<button class="action-btn" onclick="analysisReport('${selectedAddress}','${p.title}')">
-Analysis Report
-</button>
+<div> Generating Suburb Recommendations...</div>
 
 </div>
 
-</div>
-
-</div>
 `;
 
-});
+          /* =====================================================
+CALL CATALYST BACKEND
+===================================================== */
 
-document.getElementById("results").innerHTML=html;
-lastResultsHTML=html;
+          const response = await fetch(
+            "https://project-rainfall-7006542512.development.catalystserverless.com.au/server/getsuburbmatches/",
 
-}
+            {
+              method: "POST",
 
+              credentials: "include",
 
-function viewListings(address){
+              headers: {
+                "Content-Type": "application/json",
 
-if(!address){
-address="Sydney NSW";
-}
+                "x-org-id":
+                  currentOrg.zgid ||
+                  currentOrg.company_name ||
+                  currentOrg.id ||
+                  "Unknown Org",
 
-let url="https://www.realestate.com.au/buy/in-"+encodeURIComponent(address)+"/list-1";
+                "x-crm-user":
+                  currentUser.full_name || currentUser.email || "Unknown User",
 
-window.open(url,"_blank");
+                "x-record-id": window.recordID || "Unknown Record",
+              },
 
-}
+              body: JSON.stringify({
+                preferredState,
 
+                maxBudget,
 
-function analysisReport(address, propertyName){
+                minYield,
 
-document.getElementById("addressInput").value = address;
+                propertyCategory,
+              }),
+            }
+          );
+          //  401 Unauthorized HTTP status code chack
+          if (response.status === 401) {
+            document.getElementById("results").innerHTML = "";
+            showToast("Authentication Required", "error");
 
-/* hide filters */
-document.querySelector(".filters").style.display = "none";
+            setTimeout(() => {
+              const authWindow = window.open(
+                "https://project-rainfall-7006542512.development.catalystserverless.com.au/__catalyst/auth/login?service_url=/app/auth-success.html",
+                "catalystAuthWindow",
+                "width=500,height=700"
+              );
+            }, 1000);
 
-/* hide results */
-document.getElementById("results").style.display = "none";
+            document.getElementById("comparableSalesContent").innerHTML = `
+    <div style="
+        padding:20px;
+        text-align:center;
+        color:#555;
+    ">
 
-/* show selected property panel */
-document.getElementById("selectedPropertyPanel").style.display = "block";
+        Authentication required.
 
-/* display selected property */
-document.getElementById("selectedPropertyName").innerText =
-propertyName + " — " + address;
+        <br><br>
 
-}
+        Please login and click Comparable Sales again.
 
-function cancelReport(){
+    </div>
+`;
 
-/* show filters again */
-document.querySelector(".filters").style.display = "flex";
+            return;
+          }
 
-/* hide selected property panel */
-document.getElementById("selectedPropertyPanel").style.display = "none";
+          const data = await response.json(); //result
 
-/* show search results again */
-document.getElementById("results").style.display = "block";
+          /* =====================================================
+API ERROR
+===================================================== */
 
-}
+          if (!data.success) {
+            showToast(
+              data.message || "Failed to generate suburb matches",
+              "error"
+            );
 
-/* GENERATE REPORT */
+            return;
+          }
 
-function generateReport(){
+          /* =====================================================
+RENDER RESULTS
+===================================================== */
 
-if(!document.getElementById("climateCheck").checked){
+          renderSuburbResults(data.suburbs || []);
+        } catch (error) {
+          console.error(error);
 
-alert("Please select Climate Report");
+          showToast("Authentication Failed: Something went wrong", "error");
+        }
+      }
 
-return;
+      /* =====================================================
+SEARCH SUBURBS
+===================================================== */
 
-}
+      function searchSuburbs() {
+        const preferredState = document.getElementById("stateFilter").value;
 
-window.open(
-"https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
-);
+        const maxBudget = document.getElementById("budgetFilter").value;
 
-}
+        const minYield = document.getElementById("yieldFilter").value;
 
+        const propertyCategory =
+          document.getElementById("propertyTypeFilter").value;
 
-/* RESET IF FIELD CLEARED */
+        /* VALIDATION */
 
-document.getElementById("addressInput").addEventListener("input",function(){
+        if (!preferredState) {
+          showToast("Please select a state", "error");
 
-if(this.value===""){
+          return;
+        }
 
-document.querySelector(".filters").style.display="flex";
+        /* STORE GLOBALS */
 
-document.getElementById("selectedPropertyPanel").style.display="none";
+        window.preferredState = preferredState;
 
-document.getElementById("results").innerHTML="";
+        window.propertyCategory = propertyCategory;
 
-}
+        /* CALL SEARCH */
 
-});
+        generateSuburbMatches(
+          preferredState,
+          maxBudget,
+          minYield,
+          propertyCategory
+        );
+      }
 
+      /* =====================================================
+RENDER SUBURB RESULTS
+===================================================== */
+      function renderSuburbResults(suburbs) {
+        document.getElementById("summaryBar").style.display = "block";
 
-ZOHO.embeddedApp.on("PageLoad", function(data) {
-console.log("Widget loaded", data);
-});
+        document.getElementById("summaryBar").innerHTML = `
 
-ZOHO.embeddedApp.init();
+<b>${suburbs.length}</b> suburb match${suburbs.length !== 1 ? "es" : ""}
 
+found for preferred state
+<b>${window.preferredState}</b>
+
+`;
+
+        let html = `
+
+<div class="property"
+style="
+width:100%;
+max-width:100%;
+padding:0;
+overflow:hidden;
+">
+
+<table style="
+width:100%;
+border-collapse:collapse;
+font-size:14px;
+">
+
+<thead style="
+background:#f5f5f5;
+">
+
+<tr>
+
+<th style="padding:14px;text-align:left;">
+Suburb
+</th>
+
+<th style="padding:14px;text-align:left;">
+Median Price
+</th>
+
+<th style="padding:14px;text-align:left;">
+Yield
+</th>
+
+<th style="padding:14px;text-align:left;">
+5Y Growth
+</th>
+
+<th style="padding:14px;text-align:left;">
+Inventory
+</th>
+
+<th style="padding:14px;text-align:left;">
+Match Score
+</th>
+
+<th style="padding:14px;text-align:left;">
+Action
+</th>
+
+</tr>
+
+</thead>
+
+<tbody>
+
+`;
+
+        suburbs.forEach((suburb) => {
+          html += `
+
+<tr
+style="
+border-top:1px solid #ececec;
+"
+>
+
+<td style="padding:14px;">
+<b>${suburb.suburb}</b>
+</td>
+
+<td style="padding:14px;">
+$${Number(suburb.medianPrice).toLocaleString()}
+</td>
+
+<td style="padding:14px;">
+${suburb.rentalYield}%
+</td>
+
+<td style="padding:14px;">
+${suburb.fiveYearGrowth}%
+</td>
+
+<td style="padding:14px;">
+${suburb.inventory}
+</td>
+
+<td style="padding:14px;">
+${suburb.matchScore}
+</td>
+
+<td style="padding:14px;">
+
+<button
+class="shortlist-btn"
+style="
+margin:0;
+width:auto;
+padding:8px 14px;
+font-size:13px;
+"
+onclick='shortlistSuburb(${JSON.stringify(suburb)})'
+>
+Shortlist
+</button>
+
+</td>
+
+</tr>
+
+`;
+        });
+
+        /* EMPTY STATE */
+
+        if (suburbs.length === 0) {
+          html = `
+
+<div class="property"
+style="text-align:center;padding:30px;">
+
+<b>No matching suburbs found for this buyer brief.</b>
+
+</div>
+
+`;
+        }
+        html += `
+
+</tbody>
+</table>
+</div>
+
+`;
+        document.getElementById("results").innerHTML = html;
+      }
+
+      /* =====================================================
+TOAST MESSAGE
+===================================================== */
+
+      function showToast(message, type = "success") {
+        const toast = document.getElementById("toast");
+
+        toast.innerText = message;
+
+        // 🔥 reset classes
+        toast.classList.remove("success", "error");
+
+        // 🔥 apply type
+        toast.classList.add("show");
+
+        if (type === "error") {
+          toast.style.background = "#e53935";
+        } else {
+          toast.style.background = "#2e7d32";
+        }
+
+        setTimeout(() => {
+          toast.classList.remove("show");
+        }, 3000);
+      }
+
+      /* =====================================================
+AUTH SUCCESS MESSAGE LISTENER
+===================================================== */
+
+      window.addEventListener("message", function (event) {
+        if (event.data === "AUTH_SUCCESS") {
+          console.log("Authentication successful");
+
+          showToast("Authentication Successful", "success");
+
+          searchSuburbs();
+        }
+      });
+      console.log("ZOHO TYPE:", typeof ZOHO);
+
+      /* =====================================================
+ZOHO CRM CONTEXT
+===================================================== */
+
+      window.addEventListener("load", function () {
+        if (typeof ZOHO === "undefined") {
+          console.error("ZOHO SDK not loaded");
+          return;
+        }
+        ZOHO.embeddedApp.on("PageLoad", async function (data) {
+          let recordId = data.EntityId;
+
+          clientId = Array.isArray(recordId) ? recordId[0] : recordId;
+
+          // ensure number (long)
+          clientId = Number(clientId);
+          window.recordID = clientId;
+          /* =============================================
+GET CURRENT USER
+============================================= */
+
+          const currentUserResponse = await ZOHO.CRM.CONFIG.getCurrentUser();
+
+          currentUser = currentUserResponse.users[0] || {};
+
+          /* =============================================
+GET ORG INFO
+============================================= */
+
+          const orgInfoResponse = await ZOHO.CRM.CONFIG.getOrgInfo();
+
+          currentOrg = orgInfoResponse?.org?.[0] || {};
+
+          console.log("CURRENT USER:", currentUser);
+
+          console.log("CURRENT ORG:", currentOrg);
+          ZOHO.CRM.API.getRecord({
+            Entity: data.Entity,
+            RecordID: clientId,
+          }).then(function (response) {
+            let record = response.data[0];
+
+            let preferredState = record.Preferred_State || "";
+            window.preferredState = preferredState;
+            let maxBudget = record.Maximum_Budget || 0;
+            let minYield = record.Minimum_Gross_Yield || 0;
+            let propertyCategory = record.Property_Type || "";
+            /* =====================================================
+PREFILL FILTERS
+===================================================== */
+
+            document.getElementById("stateFilter").value = preferredState || "";
+
+            document.getElementById("budgetFilter").value = maxBudget || "";
+
+            document.getElementById("yieldFilter").value = minYield || "";
+
+            document.getElementById("propertyTypeFilter").value =
+              propertyCategory || "";
+
+            window.propertyCategory = propertyCategory;
+
+            if (!preferredState) {
+              console.warn("Preferred State missing");
+              return;
+            }
+          });
+        });
+
+        ZOHO.embeddedApp.init();
+      });
     </script>
-
-    </body>
-    </html>
+    <div class="watermark">Powered by <span>Agent Time × HtAG</span></div>
+  </body>
+</html>

@@ -10,7 +10,13 @@ var errorHandler = require('errorhandler');
 var morgan = require('morgan');
 var serveIndex = require('serve-index');
 var https = require('https');
-var chalk = require('chalk');
+const chalk = {
+  green:(text)=>text,
+  bold:{
+  cyan:(text)=>text,
+  red:(text)=>text
+  }
+  };
 
 process.env.PWD = process.env.PWD || process.cwd();
 

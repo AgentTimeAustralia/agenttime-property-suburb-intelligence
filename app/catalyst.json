@@ -1,0 +1,10 @@
+{
+    "functions": {
+      "targets": [
+        {
+          "name": "zoho-app-function",
+          "source": "server"
+        }
+      ]
+    }
+  }
