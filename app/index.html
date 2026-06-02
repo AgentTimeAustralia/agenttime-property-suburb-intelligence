@@ -264,27 +264,32 @@ FILTER MODAL BUTTONS
         color: #444;
 
         display: none;
+
+        text-align: center;
       }
     </style>
   </head>
 
   <body>
     <div
-      style="
-        background: white;
-        padding: 24px;
-        border-radius: 18px;
-        border: 1px solid #ececec;
-        margin-bottom: 24px;
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr 1fr auto;
-        gap: 14px;
-        align-items: end;
-        max-width: 1000px;
-        margin: auto;
-      "
-    >
-      <div>
+    style="
+      background: white;
+      padding: 24px;
+      border-radius: 18px;
+      border: 1px solid #ececec;
+      margin-bottom: 24px;
+  
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      align-items: end;
+  
+      max-width: 1400px;
+      width: 100%;
+      margin: auto;
+    "
+  >
+  <div style="width:140px;">
         <label>State</label><br />
         <select id="stateFilter">
           <option value="">Select State</option>
@@ -300,12 +305,18 @@ FILTER MODAL BUTTONS
         </select>
       </div>
 
-      <div>
+      <div style="width:200px;">
         <label>Budget</label><br />
-        <input type="number" id="budgetFilter" placeholder="Maximum Budget" />
+        <select id="budgetFilter">
+          <option value="400000">$100k - $400k</option>
+          <option value="700000">$400k - $700k</option>
+          <option value="1000000">$700k - $1M</option>
+          <option value="1500000" selected>$1M - $1.5M</option>
+          <option value="999999999">$1.5M+</option>
+        </select>
       </div>
 
-      <div>
+      <div style="width:180px;">
         <label>Property Type</label><br />
         <select id="propertyTypeFilter">
           <option value="">Select</option>
@@ -322,17 +333,51 @@ FILTER MODAL BUTTONS
         </select>
       </div>
 
-      <div>
+      <div style="min-width:150px;">
         <label>Yield %</label><br />
-        <input type="number" id="yieldFilter" placeholder="Minimum Yield" />
+        <select id="yieldFilter">
+          <option value="under4">Under 4%</option>
+          <option value="4to5">4% - 5%</option>
+          <option value="5to6">5% - 6%</option>
+          <option value="6to7">6% - 7%</option>
+          <option value="over7">Over 7%</option>
+        </select>
       </div>
-
-      <button class="action-btn" onclick="searchSuburbs()">Search</button>
-    </div>
-    <div id="summaryBar" class="summary-bar"></div>
-
-    <!-- Search results container -->
-    <div id="results" class="results"></div>
+      
+      <div style="width:180px;">
+        <label>Stock On Market</label><br />
+        <select id="somFilter">
+          <option value="">Any</option>
+          <option value="under1">Under 1%</option>
+          <option value="1to2">1% - 2%</option>
+          <option value="2to3">2% - 3%</option>
+          <option value="3to5">3% - 5%</option>
+          <option value="over5">Over 5%</option>
+        </select>
+      </div>
+      
+      <div style="width:180px;">
+        <label>Inventory Level</label><br />
+        <select id="inventoryFilter">
+          <option value="">Any</option>
+          <option value="under1">Under 1 Month</option>
+          <option value="1to2">1 - 2 Months</option>
+          <option value="2to3">2 - 3 Months</option>
+          <option value="over3">Over 3 Months</option>
+        </select>
+      </div>
+      
+      <div style="width:100%;text-align:center;margin-top:10px;">
+        <button class="action-btn" onclick="searchSuburbs()">
+          Search
+        </button>
+      </div>
+      
+      </div>
+      
+      <div id="summaryBar" class="summary-bar"></div>
+      
+      <div id="results" class="results"></div>
 
     <!-- Toast notification -->
     <div id="toast" class="toast"></div>
@@ -404,11 +449,13 @@ SUCCESS
       }
 
       async function generateSuburbMatches(
-        preferredState,
-        maxBudget,
-        minYield,
-        propertyCategory
-      ) {
+  preferredState,
+  maxBudget,
+  minYield,
+  propertyCategory,
+  stockOnMarketFilter,
+  inventoryFilter
+) {
         try {
           document.getElementById("results").innerHTML = `
 
@@ -422,7 +469,7 @@ padding:80px 20px;
 "
 >
 
-<div> Generating Suburb Recommendations...</div>
+<div style="text-align:center;width:100%;"> Generating Suburb Recommendations...</div>
 
 </div>
 
@@ -456,14 +503,18 @@ CALL CATALYST BACKEND
               },
 
               body: JSON.stringify({
-                preferredState,
+  preferredState,
 
-                maxBudget,
+  maxBudget,
 
-                minYield,
+  minYield,
 
-                propertyCategory,
-              }),
+  propertyCategory,
+
+  stockOnMarketFilter,
+
+  inventoryFilter,
+}),
             }
           );
           //  401 Unauthorized HTTP status code chack
@@ -539,6 +590,12 @@ SEARCH SUBURBS
         const propertyCategory =
           document.getElementById("propertyTypeFilter").value;
 
+          const stockOnMarketFilter =
+  document.getElementById("somFilter").value;
+
+const inventoryFilter =
+  document.getElementById("inventoryFilter").value;
+
         /* VALIDATION */
 
         if (!preferredState) {
@@ -556,11 +613,13 @@ SEARCH SUBURBS
         /* CALL SEARCH */
 
         generateSuburbMatches(
-          preferredState,
-          maxBudget,
-          minYield,
-          propertyCategory
-        );
+  preferredState,
+  maxBudget,
+  minYield,
+  propertyCategory,
+  stockOnMarketFilter,
+  inventoryFilter
+);
       }
 
       /* =====================================================
@@ -601,6 +660,10 @@ background:#f5f5f5;
 <tr>
 
 <th style="padding:14px;text-align:left;">
+Rank
+</th>
+
+<th style="padding:14px;text-align:left;">
 Suburb
 </th>
 
@@ -617,11 +680,11 @@ Yield
 </th>
 
 <th style="padding:14px;text-align:left;">
-Inventory
+SoM
 </th>
 
 <th style="padding:14px;text-align:left;">
-Match Score
+Inventory
 </th>
 
 <th style="padding:14px;text-align:left;">
@@ -646,6 +709,10 @@ border-top:1px solid #ececec;
 >
 
 <td style="padding:14px;">
+<b>#${suburb.rank}</b>
+</td>
+
+<td style="padding:14px;">
 <b>${suburb.suburb}</b>
 </td>
 
@@ -662,11 +729,11 @@ ${suburb.fiveYearGrowth}%
 </td>
 
 <td style="padding:14px;">
-${suburb.inventory}
+${suburb.stockOnMarket}%
 </td>
 
 <td style="padding:14px;">
-${suburb.matchScore}
+${suburb.inventory}
 </td>
 
 <td style="padding:14px;">
@@ -694,17 +761,9 @@ Shortlist
         /* EMPTY STATE */
 
         if (suburbs.length === 0) {
-          html = `
-
-<div class="property"
-style="text-align:center;padding:30px;">
-
-<b>No matching suburbs found for this buyer brief.</b>
-
-</div>
-
-`;
-        }
+  document.getElementById("results").innerHTML = "";
+  return;
+}
         html += `
 
 </tbody>
