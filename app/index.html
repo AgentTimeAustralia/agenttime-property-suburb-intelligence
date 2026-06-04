@@ -272,24 +272,24 @@ FILTER MODAL BUTTONS
 
   <body>
     <div
-    style="
-      background: white;
-      padding: 24px;
-      border-radius: 18px;
-      border: 1px solid #ececec;
-      margin-bottom: 24px;
-  
-      display: flex;
-      flex-wrap: wrap;
-      gap: 14px;
-      align-items: end;
-  
-      max-width: 1400px;
-      width: 100%;
-      margin: auto;
-    "
-  >
-  <div style="width:140px;">
+      style="
+        background: white;
+        padding: 24px;
+        border-radius: 18px;
+        border: 1px solid #ececec;
+        margin-bottom: 24px;
+
+        display: flex;
+        flex-wrap: wrap;
+        gap: 14px;
+        align-items: end;
+
+        max-width: 1400px;
+        width: 100%;
+        margin: auto;
+      "
+    >
+      <div style="width: 140px">
         <label>State</label><br />
         <select id="stateFilter">
           <option value="">Select State</option>
@@ -305,7 +305,7 @@ FILTER MODAL BUTTONS
         </select>
       </div>
 
-      <div style="width:200px;">
+      <div style="width: 200px">
         <label>Budget</label><br />
         <select id="budgetFilter">
           <option value="400000">$100k - $400k</option>
@@ -316,7 +316,7 @@ FILTER MODAL BUTTONS
         </select>
       </div>
 
-      <div style="width:180px;">
+      <div style="width: 180px">
         <label>Property Type</label><br />
         <select id="propertyTypeFilter">
           <option value="">Select</option>
@@ -333,7 +333,7 @@ FILTER MODAL BUTTONS
         </select>
       </div>
 
-      <div style="min-width:150px;">
+      <div style="min-width: 150px">
         <label>Yield %</label><br />
         <select id="yieldFilter">
           <option value="under4">Under 4%</option>
@@ -343,8 +343,8 @@ FILTER MODAL BUTTONS
           <option value="over7">Over 7%</option>
         </select>
       </div>
-      
-      <div style="width:180px;">
+
+      <div style="width: 180px">
         <label>Stock On Market</label><br />
         <select id="somFilter">
           <option value="">Any</option>
@@ -355,8 +355,8 @@ FILTER MODAL BUTTONS
           <option value="over5">Over 5%</option>
         </select>
       </div>
-      
-      <div style="width:180px;">
+
+      <div style="width: 180px">
         <label>Inventory Level</label><br />
         <select id="inventoryFilter">
           <option value="">Any</option>
@@ -366,18 +366,15 @@ FILTER MODAL BUTTONS
           <option value="over3">Over 3 Months</option>
         </select>
       </div>
-      
-      <div style="width:100%;text-align:center;margin-top:10px;">
-        <button class="action-btn" onclick="searchSuburbs()">
-          Search
-        </button>
+
+      <div style="width: 100%; text-align: center; margin-top: 10px">
+        <button class="action-btn" onclick="searchSuburbs()">Search</button>
       </div>
-      
-      </div>
-      
-      <div id="summaryBar" class="summary-bar"></div>
-      
-      <div id="results" class="results"></div>
+    </div>
+
+    <div id="summaryBar" class="summary-bar"></div>
+
+    <div id="results" class="results"></div>
 
     <!-- Toast notification -->
     <div id="toast" class="toast"></div>
@@ -394,68 +391,96 @@ GLOBAL VARIABLES
 
       async function shortlistSuburb(suburb) {
         try {
-          const recordID = window.recordID;
+          const acquisitionId = window.recordID;
 
           /* =====================================================
-SEARCH EXISTING SUBURB
-===================================================== */
-          const existingSuburb = await ZOHO.CRM.API.searchRecord({
-            Entity: "Suburbs",
-            Type: "criteria",
-            Query: `(Name:equals:${suburb.suburb})and(State:equals:${suburb.state})`,
+       GET ACQUISITION RECORD
+    ===================================================== */
+
+          const recordResponse = await ZOHO.CRM.API.getRecord({
+            Entity: "Acquisitions",
+            RecordID: acquisitionId,
+          });
+
+          const record = recordResponse.data[0];
+
+          /* =====================================================
+       GET EXISTING SUBFORM ROWS
+    ===================================================== */
+
+          let shortlistedSuburbs = record.Shortlisted_Suburb || [];
+
+          /* =====================================================
+       DUPLICATE CHECK USING AREA ID
+    ===================================================== */
+
+          const alreadyExists = shortlistedSuburbs.some(
+            (row) => row.Area_ID === suburb.localityId
+          );
+
+          if (alreadyExists) {
+            showToast("Suburb already shortlisted", "error");
+            return;
+          }
+
+          /* =====================================================
+       ADD NEW SUBFORM ROW
+    ===================================================== */
+
+          shortlistedSuburbs.push({
+            Suburb: suburb.suburb,
+            Median_Price: Number(suburb.medianPrice),
+            Yield: Number(suburb.rentalYield),
+            Inventory: String(suburb.inventory),
+            SOM: String(suburb.stockOnMarket),
+            Y_Growth: Number(suburb.fiveYearGrowth),
+            Area_ID: suburb.localityId,
           });
 
           /* =====================================================
-DUPLICATE CHECK
-===================================================== */
+       UPDATE ACQUISITION
+    ===================================================== */
 
-          if (existingSuburb.data && existingSuburb.data.length > 0) {
-            showToast("Suburb already shortlisted", "error");
+          // console.log(
+          //   "PAYLOAD",
+          //   JSON.stringify(
+          //     {
+          //       id: acquisitionId,
+          //       Shortlisted_Suburb: shortlistedSuburbs,
+          //     },
+          //     null,
+          //     2
+          //   )
+          // );
 
-            return;
-          }
-          /* =====================================================
-CREATE SUBURB IF NOT EXISTS
-===================================================== */
+          const updateResponse = await ZOHO.CRM.API.updateRecord({
+            Entity: "Acquisitions",
+            APIData: {
+              id: acquisitionId,
+              Shortlisted_Suburb: shortlistedSuburbs,
+            },
+          });
 
-          if (!suburbRecordId) {
-            const createResponse = await ZOHO.CRM.API.insertRecord({
-              Entity: "Suburbs",
-              APIData: {
-                Name: suburb.suburb,
-                State: suburb.state,
-                Locality_ID: suburb.localityId,
-                Match_Score: parseInt(suburb.matchScore),
-                Median_Price: parseFloat(suburb.medianPrice),
-                Gross_Yield: parseFloat(suburb.rentalYield),
-                Property_Type: window.propertyCategory,
-                Acquisition_Name: recordID,
-              },
-            });
-
-            suburbRecordId = createResponse.data[0].details.id;
-          }
-
-          /* =====================================================
-SUCCESS
-===================================================== */
+          // console.log("UPDATE  RESPONSE", updateResponse);
 
           showToast("Suburb shortlisted successfully");
         } catch (error) {
-          console.error(JSON.stringify(error, null, 2));
+          console.error("SHORTLIST ERROR", error);
+
+          // console.log("ERROR JSON", JSON.stringify(error, null, 2));
 
           showToast("Failed to shortlist suburb", "error");
         }
       }
 
       async function generateSuburbMatches(
-  preferredState,
-  maxBudget,
-  minYield,
-  propertyCategory,
-  stockOnMarketFilter,
-  inventoryFilter
-) {
+        preferredState,
+        maxBudget,
+        minYield,
+        propertyCategory,
+        stockOnMarketFilter,
+        inventoryFilter
+      ) {
         try {
           document.getElementById("results").innerHTML = `
 
@@ -503,18 +528,18 @@ CALL CATALYST BACKEND
               },
 
               body: JSON.stringify({
-  preferredState,
+                preferredState,
 
-  maxBudget,
+                maxBudget,
 
-  minYield,
+                minYield,
 
-  propertyCategory,
+                propertyCategory,
 
-  stockOnMarketFilter,
+                stockOnMarketFilter,
 
-  inventoryFilter,
-}),
+                inventoryFilter,
+              }),
             }
           );
           //  401 Unauthorized HTTP status code chack
@@ -590,11 +615,10 @@ SEARCH SUBURBS
         const propertyCategory =
           document.getElementById("propertyTypeFilter").value;
 
-          const stockOnMarketFilter =
-  document.getElementById("somFilter").value;
+        const stockOnMarketFilter = document.getElementById("somFilter").value;
 
-const inventoryFilter =
-  document.getElementById("inventoryFilter").value;
+        const inventoryFilter =
+          document.getElementById("inventoryFilter").value;
 
         /* VALIDATION */
 
@@ -613,13 +637,13 @@ const inventoryFilter =
         /* CALL SEARCH */
 
         generateSuburbMatches(
-  preferredState,
-  maxBudget,
-  minYield,
-  propertyCategory,
-  stockOnMarketFilter,
-  inventoryFilter
-);
+          preferredState,
+          maxBudget,
+          minYield,
+          propertyCategory,
+          stockOnMarketFilter,
+          inventoryFilter
+        );
       }
 
       /* =====================================================
@@ -761,9 +785,9 @@ Shortlist
         /* EMPTY STATE */
 
         if (suburbs.length === 0) {
-  document.getElementById("results").innerHTML = "";
-  return;
-}
+          document.getElementById("results").innerHTML = "";
+          return;
+        }
         html += `
 
 </tbody>
@@ -806,14 +830,14 @@ AUTH SUCCESS MESSAGE LISTENER
 
       window.addEventListener("message", function (event) {
         if (event.data === "AUTH_SUCCESS") {
-          console.log("Authentication successful");
+          // console.log("Authentication successful");
 
           showToast("Authentication Successful", "success");
 
           searchSuburbs();
         }
       });
-      console.log("ZOHO TYPE:", typeof ZOHO);
+      // console.log("ZOHO TYPE:", typeof ZOHO);
 
       /* =====================================================
 ZOHO CRM CONTEXT
@@ -848,9 +872,9 @@ GET ORG INFO
 
           currentOrg = orgInfoResponse?.org?.[0] || {};
 
-          console.log("CURRENT USER:", currentUser);
+          // console.log("CURRENT USER:", currentUser);
 
-          console.log("CURRENT ORG:", currentOrg);
+          // console.log("CURRENT ORG:", currentOrg);
           ZOHO.CRM.API.getRecord({
             Entity: data.Entity,
             RecordID: clientId,
