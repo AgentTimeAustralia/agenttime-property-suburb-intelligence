@@ -47,14 +47,13 @@ SEARCH BAR
       }
 
       select {
-        flex: 1;
+        width: 100%;
         padding: 12px;
         border: 1px solid #e3e3e3;
         border-radius: 10px;
         font-size: 15px;
         font-family: "Poppins";
         background: white;
-        min-width: 140px;
         outline: none;
         transition: all 0.2s ease;
       }
@@ -279,17 +278,16 @@ FILTER MODAL BUTTONS
         border: 1px solid #ececec;
         margin-bottom: 24px;
 
-        display: flex;
-        flex-wrap: wrap;
-        gap: 14px;
-        align-items: end;
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 16px;
 
         max-width: 1400px;
         width: 100%;
         margin: auto;
       "
     >
-      <div style="width: 180px">
+      <div>
         <label>State</label><br />
         <select id="stateFilter">
           <option value="">Select State</option>
@@ -305,7 +303,7 @@ FILTER MODAL BUTTONS
         </select>
       </div>
 
-      <div style="width: 180px">
+      <div>
         <label>Budget</label><br />
         <select id="budgetFilter">
           <option value="400000">$100k - $400k</option>
@@ -333,7 +331,7 @@ FILTER MODAL BUTTONS
         </select>
       </div> -->
 
-      <div style="min-width: 180px">
+      <div>
         <label>Yield %</label><br />
         <select id="yieldFilter">
           <option value="under4" selected>Under 4%</option>
@@ -344,7 +342,7 @@ FILTER MODAL BUTTONS
         </select>
       </div>
 
-      <div style="width: 180px">
+      <div>
         <label>Stock On Market</label><br />
         <select id="somFilter">
           <option value="">Any</option>
@@ -356,7 +354,7 @@ FILTER MODAL BUTTONS
         </select>
       </div>
 
-      <div style="width: 180px">
+      <div>
         <label>Inventory Level</label><br />
         <select id="inventoryFilter">
           <option value="">Any</option>
@@ -367,7 +365,7 @@ FILTER MODAL BUTTONS
         </select>
       </div>
 
-      <div style="width: 100%; text-align: center; margin-top: 10px">
+      <div style="grid-column: 1 / -1; text-align: center; margin-top: 10px">
         <button class="action-btn" onclick="searchSuburbs()">Search</button>
       </div>
     </div>
