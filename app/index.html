@@ -289,7 +289,7 @@ FILTER MODAL BUTTONS
         margin: auto;
       "
     >
-      <div style="width: 140px">
+      <div style="width: 180px">
         <label>State</label><br />
         <select id="stateFilter">
           <option value="">Select State</option>
@@ -305,7 +305,7 @@ FILTER MODAL BUTTONS
         </select>
       </div>
 
-      <div style="width: 200px">
+      <div style="width: 180px">
         <label>Budget</label><br />
         <select id="budgetFilter">
           <option value="400000">$100k - $400k</option>
@@ -316,7 +316,7 @@ FILTER MODAL BUTTONS
         </select>
       </div>
 
-      <div style="width: 180px">
+      <!-- <div style="width: 180px">
         <label>Property Type</label><br />
         <select id="propertyTypeFilter">
           <option value="">Select</option>
@@ -331,12 +331,12 @@ FILTER MODAL BUTTONS
 
           <option value="Home">House</option>
         </select>
-      </div>
+      </div> -->
 
-      <div style="min-width: 150px">
+      <div style="min-width: 180px">
         <label>Yield %</label><br />
         <select id="yieldFilter">
-          <option value="under4">Under 4%</option>
+          <option value="under4" selected>Under 4%</option>
           <option value="4to5">4% - 5%</option>
           <option value="5to6">5% - 6%</option>
           <option value="6to7">6% - 7%</option>
@@ -612,8 +612,9 @@ SEARCH SUBURBS
 
         const minYield = document.getElementById("yieldFilter").value;
 
-        const propertyCategory =
-          document.getElementById("propertyTypeFilter").value;
+        // const propertyCategory =
+        //   document.getElementById("propertyTypeFilter").value;
+        const propertyCategory = "house";
 
         const stockOnMarketFilter = document.getElementById("somFilter").value;
 
@@ -884,8 +885,8 @@ GET ORG INFO
             let preferredState = record.Preferred_State || "";
             window.preferredState = preferredState;
             let maxBudget = record.Maximum_Budget || 0;
-            let minYield = record.Minimum_Gross_Yield || 0;
-            let propertyCategory = record.Property_Type || "";
+            let minYield = record.Minimum_Gross_Yield || "under4";
+            let propertyCategory = "house";
             /* =====================================================
 PREFILL FILTERS
 ===================================================== */
@@ -896,8 +897,8 @@ PREFILL FILTERS
 
             document.getElementById("yieldFilter").value = minYield || "";
 
-            document.getElementById("propertyTypeFilter").value =
-              propertyCategory || "";
+            // document.getElementById("propertyTypeFilter").value =
+            //   propertyCategory || "";
 
             window.propertyCategory = propertyCategory;
 
