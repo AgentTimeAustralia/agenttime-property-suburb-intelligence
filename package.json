@@ -6,6 +6,7 @@
     "errorhandler": "^1.5.2",
     "express": "^5.2.1",
     "morgan": "^1.10.1",
+    "node-fetch": "^3.3.2",
     "serve-index": "^1.9.2",
     "zcatalyst-sdk-node": "^3.4.0"
   }

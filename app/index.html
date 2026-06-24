@@ -279,7 +279,7 @@ FILTER MODAL BUTTONS
         margin-bottom: 24px;
 
         display: grid;
-        grid-template-columns: repeat(5, 1fr);
+        grid-template-columns: repeat(6, 1fr);
         gap: 16px;
 
         max-width: 1400px;
@@ -314,23 +314,6 @@ FILTER MODAL BUTTONS
         </select>
       </div>
 
-      <!-- <div style="width: 180px">
-        <label>Property Type</label><br />
-        <select id="propertyTypeFilter">
-          <option value="">Select</option>
-
-          <option value="Free Standing">Free Standing</option>
-
-          <option value="Unit">Unit</option>
-
-          <option value="Townhouse/Villa">Townhouse/Villa</option>
-
-          <option value="Land">Land</option>
-
-          <option value="Home">House</option>
-        </select>
-      </div> -->
-
       <div>
         <label>Yield %</label><br />
         <select id="yieldFilter">
@@ -362,6 +345,17 @@ FILTER MODAL BUTTONS
           <option value="1to2">1 - 2 Months</option>
           <option value="2to3">2 - 3 Months</option>
           <option value="over3">Over 3 Months</option>
+        </select>
+      </div>
+
+      <div>
+        <label>Result Limit</label><br />
+        <select id="resultLimit" required>
+          <option value="">Select Limit</option>
+          <option value="5" selected>5 Results</option>
+          <option value="10">10 Results</option>
+          <option value="15">15 Results</option>
+          <option value="20">20 Results</option>
         </select>
       </div>
 
@@ -477,7 +471,8 @@ GLOBAL VARIABLES
         minYield,
         propertyCategory,
         stockOnMarketFilter,
-        inventoryFilter
+        inventoryFilter,
+        resultLimit
       ) {
         try {
           document.getElementById("results").innerHTML = `
@@ -537,6 +532,8 @@ CALL CATALYST BACKEND
                 stockOnMarketFilter,
 
                 inventoryFilter,
+
+                resultLimit,
               }),
             }
           );
@@ -573,6 +570,14 @@ CALL CATALYST BACKEND
           }
 
           const data = await response.json(); //result
+
+          try {
+            if (data.credit_data) {
+              await updateHTagSenderRecord(data.credit_data);
+            }
+          } catch (err) {
+            console.error("HTAG CREDIT UPDATE FAILED", err);
+          }
 
           /* =====================================================
 API ERROR
@@ -612,13 +617,14 @@ SEARCH SUBURBS
 
         // const propertyCategory =
         //   document.getElementById("propertyTypeFilter").value;
-        const propertyCategory = "house";
+        const propertyType = "house";
 
         const stockOnMarketFilter = document.getElementById("somFilter").value;
 
         const inventoryFilter =
           document.getElementById("inventoryFilter").value;
 
+        const resultLimit = document.getElementById("resultLimit").value;
         /* VALIDATION */
 
         if (!preferredState) {
@@ -627,11 +633,17 @@ SEARCH SUBURBS
           return;
         }
 
+        if (!resultLimit) {
+          showToast("Please select a result limit", "error");
+
+          return;
+        }
+
         /* STORE GLOBALS */
 
         window.preferredState = preferredState;
 
-        window.propertyCategory = propertyCategory;
+        window.propertyType = propertyType;
 
         /* CALL SEARCH */
 
@@ -639,9 +651,10 @@ SEARCH SUBURBS
           preferredState,
           maxBudget,
           minYield,
-          propertyCategory,
+          propertyType,
           stockOnMarketFilter,
-          inventoryFilter
+          inventoryFilter,
+          resultLimit
         );
       }
 
@@ -909,7 +922,61 @@ PREFILL FILTERS
 
         ZOHO.embeddedApp.init();
       });
+
+      async function updateHTagSenderRecord(creditData) {
+        try {
+          const senderSearch = await ZOHO.CRM.API.searchRecord({
+            Entity: "Sender_IDs",
+            Type: "criteria",
+            Query: "(Sender_Type:equals:HTag)",
+          });
+
+          if (!senderSearch.data || senderSearch.data.length === 0) {
+            console.log("HTag Sender_ID not found");
+            return;
+          }
+
+          const senderId = senderSearch.data[0].id;
+
+          const zohoDateTime =
+            new Date().toISOString().split(".")[0] + "+00:00";
+
+          const lastTopUpDate = creditData.last_topup_date
+            ? new Date(creditData.last_topup_date.replace(" ", "T"))
+                .toISOString()
+                .split(".")[0] + "+00:00"
+            : null;
+
+          const config = {
+            Entity: "Sender_IDs",
+            APIData: {
+              id: senderId,
+
+              Last_Credit_Usage_Date: zohoDateTime,
+
+              Available_Credits: creditData.available_credits,
+
+              Last_Credits_Consumed: creditData.last_credits_consumed,
+
+              Credit_Status: creditData.credit_status,
+
+              Last_Top_Up: creditData.last_topup,
+
+              Last_Top_Up_Date: lastTopUpDate,
+
+              Total_Credits_Purchased: creditData.total_credits_purchased,
+            },
+          };
+
+          const updateResponse = await ZOHO.CRM.API.updateRecord(config);
+
+          console.log("SENDER UPDATE RESPONSE:", updateResponse);
+        } catch (error) {
+          console.error("SENDER UPDATE ERROR:", error);
+        }
+      }
     </script>
+
     <div class="watermark">Powered by <span>Agent Time × HtAG</span></div>
   </body>
 </html>
