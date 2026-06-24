@@ -759,7 +759,7 @@ await zcql.executeZCQLQuery(`
         CreditCostBreakdown: usageBreakdown.join("\n"),
       });
 
-      console.log("HTAG CONSUMPTION LOG INSERTED");
+      // console.log("HTAG CONSUMPTION LOG INSERTED");
     } catch (htagError) {
       console.error("HTAG LOG ERROR:", htagError);
     }
