@@ -48,14 +48,18 @@ SEARCH BAR
 
       select {
         width: 100%;
-        padding: 12px;
+        height: 45px;
+        padding: 0 12px;
         border: 1px solid #e3e3e3;
         border-radius: 10px;
-        font-size: 15px;
+        font-size: 14px;
         font-family: "Poppins";
         background: white;
         outline: none;
         transition: all 0.2s ease;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        overflow: hidden;
       }
 
       input:focus,
@@ -116,13 +120,10 @@ RESULT CARDS
 ===================================================== */
 
       /* Container for search results */
-      .results {
-        margin-top: 20px;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 18px;
-        align-items: flex-start;
-      }
+      .results{
+    width:100%;
+    margin-top:20px;
+}
 
       /* Individual property card */
       .property {
@@ -271,22 +272,23 @@ FILTER MODAL BUTTONS
 
   <body>
     <div
-      style="
-        background: white;
-        padding: 24px;
-        border-radius: 18px;
-        border: 1px solid #ececec;
-        margin-bottom: 24px;
-
-        display: grid;
-        grid-template-columns: repeat(6, 1fr);
-        gap: 16px;
-
-        max-width: 1400px;
-        width: 100%;
-        margin: auto;
-      "
-    >
+    style="
+    background:white;
+    padding:24px;
+    border-radius:18px;
+    border:1px solid #ececec;
+    max-width:1400px;
+    width:100%;
+    margin:0 auto 24px auto;
+    ">
+    
+    <div
+    style="
+    display:grid;
+    grid-template-columns:repeat(6,minmax(170px,1fr));
+    gap:16px;
+    align-items:end;
+    ">
       <div>
         <label>State</label><br />
         <select id="stateFilter">
@@ -359,14 +361,71 @@ FILTER MODAL BUTTONS
         </select>
       </div>
 
-      <div style="grid-column: 1 / -1; text-align: center; margin-top: 10px">
+      <div style="grid-column:1/-1;text-align:center;margin-top:10px;">
+
+        <div
+            id="availableCreditsBadge"
+            style="
+                display:inline-flex;
+                align-items:center;
+                gap:8px;
+                padding:8px 14px;
+                margin-bottom:14px;
+                border-radius:999px;
+                background:#f6f7f8;
+                border:1px solid #e5e5e5;
+                font-size:12px;
+                color:#555;
+                font-weight:500;
+            "
+        >
+            🟢 Available Credits
+    
+            <span
+                id="availableCreditsValue"
+                style="
+                    font-size:13px;
+                    font-weight:700;
+                    color:#111;
+                "
+            >
+                --
+            </span>
+    
+        </div>
+    
+        <br>
+    
+        <button
+        class="action-btn"
+        onclick="searchSuburbs()"
+        >
+        Search
+        </button>
+        
+        </div>
+    
+    <!-- </div>
         <button class="action-btn" onclick="searchSuburbs()">Search</button>
-      </div>
+      </div> -->
     </div>
 
-    <div id="summaryBar" class="summary-bar"></div>
-
-    <div id="results" class="results"></div>
+    <div id="resultsContainer"
+style="
+width:100%;
+max-width:1400px;
+margin:24px auto 0;
+padding:0;
+">
+   <div id="summaryBar" class="summary-bar" style="width: 100%; box-sizing: border-box;"></div>
+   <div
+    id="results"
+    style="
+        width:100%;
+        display:block;
+    ">
+</div>
+</div>
 
     <!-- Toast notification -->
     <div id="toast" class="toast"></div>
@@ -475,24 +534,18 @@ GLOBAL VARIABLES
         resultLimit
       ) {
         try {
+          // FIND THIS SECTION INSIDE generateSuburbMatches():
           document.getElementById("results").innerHTML = `
-
-<div
-style="
-width:100%;
-display:flex;
-justify-content:center;
-align-items:center;
-padding:80px 20px;
-"
->
-
-<div style="text-align:center;width:100%;"> Generating Suburb Recommendations...</div>
-
+<div style="
+padding:120px 0;
+text-align:center;
+font-size:16px;
+font-weight:500;
+color:#666;
+">
+Generating Suburb Recommendations...
 </div>
-
 `;
-
           /* =====================================================
 CALL CATALYST BACKEND
 ===================================================== */
@@ -673,18 +726,21 @@ found for preferred state
 
 `;
 
-        let html = `
-
-<div class="property"
+let html = `
+<div
 style="
 width:100%;
-max-width:100%;
-padding:0;
+background:#fff;
+border:1px solid #ececec;
+border-radius:14px;
 overflow:hidden;
+box-shadow:0 2px 10px rgba(0,0,0,.04);
 ">
 
-<table style="
+<table
+style="
 width:100%;
+min-width:100%;
 border-collapse:collapse;
 font-size:14px;
 ">
@@ -883,6 +939,7 @@ GET ORG INFO
           const orgInfoResponse = await ZOHO.CRM.CONFIG.getOrgInfo();
 
           currentOrg = orgInfoResponse?.org?.[0] || {};
+          await loadAvailableCredits();
 
           // console.log("CURRENT USER:", currentUser);
 
@@ -923,6 +980,30 @@ PREFILL FILTERS
         ZOHO.embeddedApp.init();
       });
 
+      async function loadAvailableCredits() {
+
+try {
+
+    const senderSearch = await ZOHO.CRM.API.searchRecord({
+        Entity: "Sender_IDs",
+        Type: "criteria",
+        Query: "(Sender_Type:equals:HTag)"
+    });
+
+    if (!senderSearch.data || senderSearch.data.length === 0) return;
+
+    document.getElementById("availableCreditsValue").innerText =
+        senderSearch.data[0].Available_Credits ?? "--";
+
+}
+catch(err){
+
+    console.error("Credit Load Error", err);
+
+}
+
+}
+
       async function updateHTagSenderRecord(creditData) {
         try {
           const senderSearch = await ZOHO.CRM.API.searchRecord({
@@ -950,27 +1031,39 @@ PREFILL FILTERS
           const config = {
             Entity: "Sender_IDs",
             APIData: {
-              id: senderId,
 
-              Last_Credit_Usage_Date: zohoDateTime,
+id: senderId,
 
-              Available_Credits: creditData.available_credits,
+Last_Credit_Usage_Date: zohoDateTime,
 
-              Last_Credits_Consumed: creditData.last_credits_consumed,
+Available_Credits: creditData.available_credits,
 
-              Credit_Status: creditData.credit_status,
+Last_Credits_Consumed: creditData.last_credits_consumed,
 
-              Last_Top_Up: creditData.last_topup,
+Credit_Status: creditData.credit_status,
 
-              Last_Top_Up_Date: lastTopUpDate,
+Last_Top_Up: creditData.last_topup,
 
-              Total_Credits_Purchased: creditData.total_credits_purchased,
-            },
+Last_Top_Up_Date: lastTopUpDate,
+
+Total_Credits_Purchased: creditData.total_credits_purchased,
+
+Subscription_Plan: creditData.subscription_plan,
+
+Subscription_Status: creditData.subscription_status,
+
+Subscription_Expiry_Date: creditData.subscription_expiry_date
+    ? new Date(creditData.subscription_expiry_date)
+          .toISOString()
+          .split(".")[0] + "+00:00"
+    : null
+},
           };
 
           const updateResponse = await ZOHO.CRM.API.updateRecord(config);
 
           console.log("SENDER UPDATE RESPONSE:", updateResponse);
+          await loadAvailableCredits();
         } catch (error) {
           console.error("SENDER UPDATE ERROR:", error);
         }

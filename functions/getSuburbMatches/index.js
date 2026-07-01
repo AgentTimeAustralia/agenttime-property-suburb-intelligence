@@ -48,9 +48,10 @@ module.exports = async (req, res) => {
 
     return;
   }
-
+  let body = {};
+  const startTime = Date.now();
   try {
-    const startTime = Date.now();
+    
 
     // billing
     let usageBreakdown = [];
@@ -77,7 +78,6 @@ module.exports = async (req, res) => {
       });
     });
 
-    let body = {};
 
     const orgId = String(req.headers["x-org-id"] || "").trim();
 
@@ -97,18 +97,16 @@ module.exports = async (req, res) => {
        WHERE OrgID='${orgId}'
        ORDER BY LastTopupDate DESC`
     );
-    
+
     let lastTopupDate = "";
     let lastTopup = 0;
     let totalCreditsPurchased = 0;
     let latestPayment = null;
-    
+
     if (paymentHistoryResult && paymentHistoryResult.length > 0) {
       paymentHistoryResult.forEach((row) => {
-        totalCreditsPurchased += Number(
-          row.PaymentHistory.CreditToppedUp || 0
-        );
-    
+        totalCreditsPurchased += Number(row.PaymentHistory.CreditToppedUp || 0);
+
         if (
           !latestPayment ||
           new Date(row.PaymentHistory.LastTopupDate) >
@@ -117,7 +115,7 @@ module.exports = async (req, res) => {
           latestPayment = row.PaymentHistory;
         }
       });
-    
+
       if (latestPayment) {
         lastTopupDate = latestPayment.LastTopupDate || "";
         lastTopup = Number(latestPayment.CreditToppedUp || 0);
@@ -131,47 +129,40 @@ module.exports = async (req, res) => {
     if (apiTenantResult && apiTenantResult.length > 0) {
       tenantRow = apiTenantResult[0].apiTenants;
     }
-
-    if (
-      tenantRow &&
-      latestPayment &&
-      latestPayment.LastTopupDate
-    ) {
+    let currentCredits = Number(tenantRow?.CreditsLeft || 0);
+    if (tenantRow && latestPayment && latestPayment.LastTopupDate) {
       const tenantLastTopup = tenantRow.LastTopUpDate
         ? new Date(tenantRow.LastTopUpDate)
         : null;
-    
-      const paymentLastTopup = new Date(
-        latestPayment.LastTopupDate
-      );
-    
+
+      const paymentLastTopup = new Date(latestPayment.LastTopupDate);
+
       if (
         !tenantLastTopup ||
-        paymentLastTopup > tenantLastTopup
-      ) {
-        const topupCredits = Number(
-          latestPayment.CreditToppedUp || 0
-        );
-    
-        const currentCredits = Number(
-          tenantRow.CreditsLeft || 0
-        );
-    
-        const newCredits = currentCredits + topupCredits;
-    
-        await zcql.executeZCQLQuery(`
-          UPDATE apiTenants
-          SET CreditsLeft=${newCredits},
-              CreditStatus='Active',
-              LastTopUpDate='${latestPayment.LastTopupDate}'
-          WHERE ROWID='${tenantRow.ROWID}'
-        `);
-    
+        paymentLastTopup > tenantLastTopup ||
+        Number(tenantRow.CreditsLeft || 0) <= 0
+    ) {
+        const topupCredits = Number(latestPayment.CreditToppedUp || 0);
+
+        const newCredits = topupCredits;
+
+await zcql.executeZCQLQuery(`
+UPDATE apiTenants
+SET CreditsLeft=${newCredits},
+    CreditStatus='Active',
+    LastTopUpDate='${latestPayment.LastTopupDate}',
+    SubscriptionPlan='${latestPayment.SubscriptionPlan}',
+    SubscriptionStatus='${latestPayment.SubscriptionStatus}',
+    SubscriptionExpiryDate='${latestPayment.SubscriptionExpiryDate}'
+WHERE ROWID='${tenantRow.ROWID}'
+`);
+
         const refreshedTenant = await zcql.executeZCQLQuery(
           `SELECT * FROM apiTenants WHERE ROWID='${tenantRow.ROWID}'`
         );
-    
+
         tenantRow = refreshedTenant[0].apiTenants;
+        currentCredits = Number(tenantRow.CreditsLeft || 0);
       }
     }
 
@@ -235,64 +226,97 @@ module.exports = async (req, res) => {
       );
     }
 
-    let currentCredits = Number(tenantRow.CreditsLeft || 0);
+    // =============================================
+    // SUBSCRIPTION VALIDATION
+    // =============================================
 
-if (
-  creditRow &&
-  Number(creditRow.CreditsRemaining || 0) === 0 &&
-  currentCredits > 0
-) {
-  await creditsTable.updateRow({
-    ROWID: creditRow.ROWID,
-    CreditsRemaining: currentCredits,
-    Total_Credits_Purchased: totalCreditsPurchased,
-  });
+    const subscriptionStatus = tenantRow.SubscriptionStatus || "Expired";
 
-  creditRow.CreditsRemaining = currentCredits;
-}
+    const subscriptionExpiryDate = tenantRow.SubscriptionExpiryDate
+      ? new Date(tenantRow.SubscriptionExpiryDate)
+      : null;
 
-const MIN_REQUIRED_CREDITS = 20;
+    const today = new Date();
 
-if (currentCredits < MIN_REQUIRED_CREDITS) {
-  try {
-    await WidgetUsageLogsTable.insertRow({
-      Org_ID: orgId,
+    today.setHours(0, 0, 0, 0);
 
-      CRM_User: currentUser?.first_name || "Unknown User",
+    if (subscriptionExpiryDate) {
+      subscriptionExpiryDate.setHours(0, 0, 0, 0);
+    }
 
-      Function_Name: "getsuburbmatches",
+    if (
+      subscriptionStatus !== "Active" ||
+      !subscriptionExpiryDate ||
+      subscriptionExpiryDate < today
+    ) {
+      res.statusCode = 403;
 
-      Feature_Name: "Suburb Intelligence",
+      res.setHeader("Content-Type", "application/json");
 
-      Record_ID:
-        req.headers["x-record-id"] || body.recordID || "Unknown Record",
+      return res.end(
+        JSON.stringify({
+          success: false,
+          error: "subscription_expired",
+          message:
+            "Your HtAG subscription has expired. Please renew your subscription.",
+        })
+      );
+    }
 
-      Execution_Time_MS: 0,
+    if (
+      creditRow &&
+      Number(creditRow.CreditsRemaining || 0) === 0 &&
+      currentCredits > 0
+    ) {
+      await creditsTable.updateRow({
+        ROWID: creditRow.ROWID,
+        CreditsRemaining: currentCredits,
+        Total_Credits_Purchased: totalCreditsPurchased,
+      });
 
-      Status: "insufficient_credits",
+      creditRow.CreditsRemaining = currentCredits;
+    }
 
-      API_Consumption: 0,
+    const MIN_REQUIRED_CREDITS = 20;
 
-      Usage_Response:
-        `Available Credits=${currentCredits}, Required Credits=${MIN_REQUIRED_CREDITS}`,
-    });
-  } catch (logError) {
-    console.error("INSUFFICIENT CREDIT LOG ERROR", logError);
-  }
+    if (currentCredits < MIN_REQUIRED_CREDITS) {
+      try {
+        await WidgetUsageLogsTable.insertRow({
+          Org_ID: orgId,
 
-  return res.end(
-    JSON.stringify({
-      success: false,
+          CRM_User: currentUser?.first_name || "Unknown User",
 
-      message:
-        `Minimum ${MIN_REQUIRED_CREDITS} credits required to run Suburb Match Engine.`,
+          Function_Name: "getsuburbmatches",
 
-      available_credits: currentCredits,
+          Feature_Name: "Suburb Intelligence",
 
-      required_credits: MIN_REQUIRED_CREDITS,
-    })
-  );
-}
+          Record_ID:
+            req.headers["x-record-id"] || body.recordID || "Unknown Record",
+
+          Execution_Time_MS: 0,
+
+          Status: "insufficient_credits",
+
+          API_Consumption: 0,
+
+          Usage_Response: `Available Credits=${currentCredits}, Required Credits=${MIN_REQUIRED_CREDITS}`,
+        });
+      } catch (logError) {
+        console.error("INSUFFICIENT CREDIT LOG ERROR", logError);
+      }
+
+      return res.end(
+        JSON.stringify({
+          success: false,
+
+          message: `Minimum ${MIN_REQUIRED_CREDITS} credits required to run Suburb Match Engine.`,
+
+          available_credits: currentCredits,
+
+          required_credits: MIN_REQUIRED_CREDITS,
+        })
+      );
+    }
 
     if (!apiKey) {
       res.statusCode = 500;
@@ -689,19 +713,18 @@ if (currentCredits < MIN_REQUIRED_CREDITS) {
       console.error("LOGGING ERROR:", loggingError);
     }
     if (!creditRow) {
-
       const newCreditRow = await creditsTable.insertRow({
         OrgID: orgId,
-    
+
         CreditsRemaining: currentCredits,
-    
+
         Total_Credits_Purchased: totalCreditsPurchased,
-    
+
         Last_Credits_Consumed: 0,
-    
-        LastCreditUsageDate: ""
+
+        LastCreditUsageDate: new Date().toISOString().slice(0, 19).replace("T", " "),
       });
-    
+
       creditRow = newCreditRow;
     }
 
@@ -715,24 +738,28 @@ if (currentCredits < MIN_REQUIRED_CREDITS) {
       ROWID: creditRow.ROWID,
       CreditsRemaining: newBalance,
       Last_Credits_Consumed: totalBillingUnits,
-      LastCreditUsageDate: new Date().toISOString().split("T")[0],
+      LastCreditUsageDate: new Date().toISOString().slice(0, 19).replace("T", " "),
+
     });
 
     let tenantCreditStatus = "Active";
 
-if (newBalance <= 0) {
-  tenantCreditStatus = "Exhausted";
-}
-else if (newBalance <= 20) {
-  tenantCreditStatus = "Low Credits";
-}
+    if (newBalance <= 0) {
+      tenantCreditStatus = "Exhausted";
+    } else if (newBalance <= 20) {
+      tenantCreditStatus = "Low Credits";
+    }
 
-await zcql.executeZCQLQuery(`
-  UPDATE apiTenants
-  SET CreditsLeft=${newBalance},
-      CreditStatus='${tenantCreditStatus}'
-  WHERE ROWID='${tenantRow.ROWID}'
-`);
+    await zcql.executeZCQLQuery(`
+      UPDATE apiTenants
+      SET CreditsLeft=${newBalance},
+          CreditStatus='${tenantCreditStatus}',
+          LastTopUpDate='${latestPayment ? latestPayment.LastTopupDate : tenantRow.LastTopUpDate}',
+          SubscriptionPlan='${latestPayment ? latestPayment.SubscriptionPlan : tenantRow.SubscriptionPlan}',
+          SubscriptionStatus='${latestPayment ? latestPayment.SubscriptionStatus : tenantRow.SubscriptionStatus}',
+          SubscriptionExpiryDate='${latestPayment ? latestPayment.SubscriptionExpiryDate : tenantRow.SubscriptionExpiryDate}'
+      WHERE ROWID='${tenantRow.ROWID}'
+      `);
 
     try {
       await htagConsumptionTable.insertRow({
@@ -779,8 +806,12 @@ await zcql.executeZCQLQuery(`
           credit_status: tenantCreditStatus,
           last_topup: lastTopup,
           last_topup_date: lastTopupDate,
-          total_credits_purchased: totalCreditsPurchased
-        },
+          total_credits_purchased: totalCreditsPurchased,
+      
+          subscription_plan: tenantRow.SubscriptionPlan,
+          subscription_status: tenantRow.SubscriptionStatus,
+          subscription_expiry_date: tenantRow.SubscriptionExpiryDate
+      },
       })
     );
   } catch (error) {
@@ -821,7 +852,8 @@ await zcql.executeZCQLQuery(`
       res.end(
         JSON.stringify({
           success: false,
-          message: "HtAG credits exhausted",
+          message:
+            "[Error 429], Please contact support@agenttime.au and try again.",
         })
       );
 
